@@ -3,7 +3,7 @@
 // Folder dasar (relative terhadap file ini)
 $base_dir = 'anime'; 
 // Judul Tab
-$app_title = "Explorer Pi";
+$app_title = "XRiczX Explorer";
 
 // --- BACKEND PHP (API) ---
 if (isset($_POST['action'])) {
