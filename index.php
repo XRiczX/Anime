@@ -6,7 +6,6 @@ $base_dir = 'anime';
 $app_title = "Explorer Pi";
 
 // --- BACKEND PHP (API) ---
-// Menangani request AJAX dari JavaScript
 if (isset($_POST['action'])) {
     header('Content-Type: application/json');
     $action = $_POST['action'];
@@ -14,7 +13,6 @@ if (isset($_POST['action'])) {
     $name = isset($_POST['name']) ? $_POST['name'] : '';
     $destination = isset($_POST['destination']) ? $_POST['destination'] : '';
 
-    // Security Check: Mencegah akses ke folder sistem (../)
     if (strpos($path, '..') !== false || strpos($destination, '..') !== false) {
         echo json_encode(['status' => 'error', 'message' => 'Akses ditolak.']);
         exit;
@@ -34,7 +32,6 @@ if (isset($_POST['action'])) {
                 $is_dir = is_dir($full_path);
                 $ext = strtolower(pathinfo($item, PATHINFO_EXTENSION));
                 
-                // Tentukan Tipe File
                 $type = 'file';
                 if ($is_dir) $type = 'folder';
                 elseif (in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) $type = 'image';
@@ -66,7 +63,7 @@ if (isset($_POST['action'])) {
         exit;
     }
 
-    // 3. COPY / PASTE (Sederhana)
+    // 3. COPY / PASTE
     if ($action == 'paste') {
         $source = __DIR__ . '/' . $_POST['source'];
         $dest = $real_path . '/' . basename($source);
@@ -79,7 +76,6 @@ if (isset($_POST['action'])) {
     }
 }
 
-// Fungsi Format Size
 function formatSize($bytes) {
     if ($bytes >= 1073741824) return number_format($bytes / 1073741824, 2) . ' GB';
     if ($bytes >= 1048576) return number_format($bytes / 1048576, 2) . ' MB';
@@ -92,11 +88,10 @@ function formatSize($bytes) {
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title><?php echo $app_title; ?></title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* --- GAYA WINDOWS 11 DARK MODE --- */
         :root {
             --bg-color: #202020;
             --sidebar-bg: #191919;
@@ -113,84 +108,106 @@ function formatSize($bytes) {
         body {
             background-color: var(--bg-color);
             color: var(--text-main);
-            font-family: 'Segoe UI Variable', 'Segoe UI', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             margin: 0;
             display: flex;
             height: 100vh;
             overflow: hidden;
-            user-select: none; /* Mencegah blok teks biru */
+            -webkit-user-select: none; /* Disable text select on iOS */
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        /* SIDEBAR */
+        /* --- SIDEBAR --- */
         .sidebar {
-            width: 200px;
+            width: 250px;
             background-color: var(--sidebar-bg);
             border-right: 1px solid var(--border);
             padding: 10px;
             display: flex;
             flex-direction: column;
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+        .sidebar-header {
+            padding: 10px 15px;
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--text-main);
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         .sidebar-item {
-            padding: 10px 15px;
-            border-radius: 5px;
+            padding: 12px 15px;
+            border-radius: 8px;
             cursor: pointer;
             color: var(--text-sub);
-            font-size: 14px;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
         }
         .sidebar-item:hover { background-color: var(--item-hover); color: white; }
-        .sidebar-item i { margin-right: 10px; width: 20px; text-align: center; }
+        .sidebar-item i { margin-right: 15px; width: 20px; text-align: center; font-size: 18px; }
 
-        /* MAIN CONTENT */
-        .main { flex: 1; display: flex; flex-direction: column; }
+        /* --- MAIN CONTENT --- */
+        .main { flex: 1; display: flex; flex-direction: column; position: relative; width: 100%; }
 
-        /* ADDRESS BAR */
+        /* --- TOOLBAR --- */
         .toolbar {
-            background-color: var(--bg-color);
-            padding: 10px 20px;
+            background-color: var(--header-bg);
+            padding: 10px 15px;
             border-bottom: 1px solid var(--border);
             display: flex;
             align-items: center;
             gap: 15px;
+            height: 50px;
         }
-        .nav-btn { background: none; border: none; color: white; cursor: pointer; font-size: 16px; }
+        .nav-btn { background: none; border: none; color: white; cursor: pointer; font-size: 18px; padding: 5px; }
+        .hamburger-btn { display: none; font-size: 20px; margin-right: 5px; }
+        
         .address-bar {
             flex: 1;
-            background-color: #333;
+            background-color: #111;
             border: 1px solid #444;
-            border-radius: 4px;
-            padding: 5px 15px;
-            font-size: 13px;
+            border-radius: 6px;
+            padding: 8px 15px;
+            font-size: 14px;
             color: white;
             display: flex;
             align-items: center;
+            overflow: hidden;
+            white-space: nowrap;
         }
+        .address-text { overflow: hidden; text-overflow: ellipsis; }
 
-        /* FILE GRID AREA */
+        /* --- FILE GRID --- */
         .file-area {
             flex: 1;
             overflow-y: auto;
-            padding: 20px;
+            padding: 15px;
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-            gap: 10px;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); /* Responsive Grid */
+            gap: 15px;
             align-content: start;
+            -webkit-overflow-scrolling: touch; /* Smooth scroll iOS */
         }
 
-        /* FILE ITEM */
         .item {
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 10px;
-            border-radius: 5px;
+            padding: 10px 5px;
+            border-radius: 8px;
             cursor: pointer;
-            border: 1px solid transparent;
             transition: 0.1s;
+            position: relative;
         }
-        .item:hover { background-color: var(--item-hover); }
-        .item.active { background-color: var(--item-selected); border: 1px solid rgba(255,255,255,0.2); }
+        .item:active { background-color: var(--item-selected); transform: scale(0.98); }
         
-        .item-icon { font-size: 42px; margin-bottom: 8px; position: relative; }
+        .item-icon { font-size: 48px; margin-bottom: 10px; }
         .folder-icon { color: #fce100; }
         .file-icon { color: #fff; }
         .video-icon { color: #e50914; }
@@ -199,135 +216,167 @@ function formatSize($bytes) {
         .office-icon { color: #2b579a; }
 
         .item-name {
-            font-size: 12px;
+            font-size: 13px;
             text-align: center;
             word-break: break-word;
+            line-height: 1.3;
             max-width: 100%;
             display: -webkit-box;
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
+            color: #ddd;
         }
 
-        /* CONTEXT MENU (KLIK KANAN) */
-        .context-menu {
-            position: absolute;
-            background-color: var(--menu-bg);
-            border: 1px solid #454545;
-            border-radius: 8px;
-            padding: 5px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+        /* --- RESPONSIVE MOBILE & TABLET --- */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: absolute;
+                left: -100%; /* Sembunyikan sidebar ke kiri */
+                height: 100%;
+                width: 250px;
+                box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+            }
+            .sidebar.active {
+                transform: translateX(100%); /* Geser masuk */
+                left: -250px; /* Reset base position logic */
+            }
+            .hamburger-btn { display: block; }
+            
+            .grid-template-columns {
+                grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+            }
+            .address-bar { font-size: 12px; }
+            .item-icon { font-size: 40px; }
+        }
+
+        /* OVERLAY GELAP SAAT SIDEBAR MUNCUL DI HP */
+        .overlay {
             display: none;
-            z-index: 1000;
-            min-width: 180px;
-            backdrop-filter: blur(10px);
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 900;
+        }
+        .overlay.active { display: block; }
+
+        /* --- CONTEXT MENU --- */
+        .context-menu {
+            position: fixed; /* Ganti absolute ke fixed agar aman di scroll */
+            background-color: rgba(40, 40, 40, 0.95);
+            border: 1px solid #555;
+            border-radius: 12px;
+            padding: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            display: none;
+            z-index: 2000;
+            min-width: 200px;
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
         }
         .menu-item {
-            padding: 8px 15px;
-            font-size: 13px;
+            padding: 12px 15px;
+            font-size: 14px;
             color: white;
             cursor: pointer;
-            border-radius: 4px;
+            border-radius: 8px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
         }
-        .menu-item:hover { background-color: var(--accent); color: black; }
-        .separator { height: 1px; background-color: #454545; margin: 4px 0; }
+        .menu-item:last-child { border-bottom: none; }
+        .menu-item:active { background-color: var(--accent); color: black; }
 
-        /* MODAL PREVIEW */
+        /* --- MODAL --- */
         .modal {
-            display: none; position: fixed; z-index: 2000;
+            display: none; position: fixed; z-index: 3000;
             left: 0; top: 0; width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.85);
+            background-color: rgba(0,0,0,0.9);
             align-items: center; justify-content: center;
         }
         .modal-content {
-            background: #222; padding: 0; border-radius: 8px;
-            max-width: 90%; max-height: 90%;
-            display: flex; flex-direction: column; overflow: hidden;
-            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+            width: 95%; max-width: 800px;
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            max-height: 80vh;
+            display: flex; flex-direction: column;
         }
-        .modal-header {
-            padding: 10px 20px; background: #333; color: white;
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        .modal-body {
-            display: flex; justify-content: center; align-items: center;
-            background: black;
-            min-width: 600px; min-height: 400px;
-        }
-        iframe, video, img { max-width: 100%; max-height: 80vh; }
-        .close-btn { cursor: pointer; font-size: 20px; font-weight: bold; }
+        .modal-header { padding: 15px; background: #222; display: flex; justify-content: space-between; align-items: center; }
+        .close-btn { font-size: 24px; padding: 0 10px; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <div class="sidebar">
-        <div class="sidebar-item" onclick="loadDir('<?php echo $base_dir; ?>')"><i class="fa-solid fa-house"></i> Home</div>
+    <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <span>Server Menu</span>
+            <i class="fa-solid fa-times" style="cursor:pointer;" onclick="toggleSidebar()"></i>
+        </div>
+        <div class="sidebar-item" onclick="loadDir('<?php echo $base_dir; ?>'); toggleSidebar();"><i class="fa-solid fa-house"></i> Home</div>
         <div class="sidebar-item"><i class="fa-solid fa-clock"></i> Recent</div>
         <div class="sidebar-item"><i class="fa-solid fa-cloud"></i> Network</div>
     </div>
 
     <div class="main">
         <div class="toolbar">
+            <button class="nav-btn hamburger-btn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
             <button class="nav-btn" onclick="goUp()"><i class="fa-solid fa-arrow-up"></i></button>
             <div class="address-bar">
-                <i class="fa-solid fa-desktop" style="margin-right: 10px;"></i>
-                <span id="address-text">This PC > Anime</span>
+                <i class="fa-solid fa-hard-drive" style="margin-right: 10px; color: #888;"></i>
+                <span id="address-text" class="address-text">Anime</span>
             </div>
             <button class="nav-btn" onclick="location.reload()"><i class="fa-solid fa-rotate-right"></i></button>
         </div>
 
-        <div class="file-area" id="file-list" oncontextmenu="showGlobalMenu(event)">
+        <div class="file-area" id="file-list" onclick="hideMenu()">
             </div>
     </div>
 
     <div id="ctx-menu" class="context-menu">
-        <div class="menu-item" onclick="previewFile()"><i class="fa-solid fa-eye"></i> Open / Preview</div>
-        <div class="separator"></div>
+        <div class="menu-item" onclick="previewFile()"><i class="fa-solid fa-eye"></i> Open / Play</div>
         <div class="menu-item" onclick="copyFile()"><i class="fa-regular fa-copy"></i> Copy</div>
-        <div class="menu-item" onclick="pasteFile()"><i class="fa-regular fa-paste"></i> Paste</div>
-        <div class="separator"></div>
+        <div class="menu-item" onclick="pasteFile()"><i class="fa-regular fa-paste"></i> Paste Here</div>
         <div class="menu-item" onclick="renameFile()"><i class="fa-solid fa-i-cursor"></i> Rename</div>
         <div class="menu-item" onclick="downloadFile()"><i class="fa-solid fa-download"></i> Download</div>
-        <div class="separator"></div>
         <div class="menu-item" onclick="showProps()"><i class="fa-solid fa-circle-info"></i> Properties</div>
     </div>
 
     <div id="previewModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <span id="modalTitle">Preview</span>
+                <span id="modalTitle" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:80%;">Preview</span>
                 <span class="close-btn" onclick="closeModal()">&times;</span>
             </div>
-            <div class="modal-body" id="modalBody">
-                </div>
+            <div id="modalBody" style="display:flex; justify-content:center; background:black; min-height:200px;"></div>
         </div>
     </div>
 
     <script>
-        // CONFIG
         let currentPath = '<?php echo $base_dir; ?>';
-        let selectedFile = null; // Object file yang sedang diklik kanan
-        let clipboard = null; // Untuk copy paste
+        let selectedFile = null;
+        let clipboard = null;
+        let longPressTimer; 
         
-        // INIT
         document.addEventListener('DOMContentLoaded', () => {
             loadDir(currentPath);
-            
-            // Hide menu on click elsewhere
-            document.addEventListener('click', () => {
-                document.getElementById('ctx-menu').style.display = 'none';
-            });
         });
 
-        // 1. LOAD DIRECTORY
+        // --- SIDEBAR LOGIC ---
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('overlay').classList.toggle('active');
+        }
+
+        // --- CORE FUNCTIONS ---
         function loadDir(path) {
             currentPath = path;
-            document.getElementById('address-text').innerText = 'This PC > ' + path;
+            document.getElementById('address-text').innerText = path;
             const container = document.getElementById('file-list');
-            container.innerHTML = '<div style="text-align:center; width:100%; color:#888;">Loading...</div>';
+            container.innerHTML = '<div style="color:#888; text-align:center; margin-top:20px;">Loading...</div>';
 
             const formData = new FormData();
             formData.append('action', 'list');
@@ -338,7 +387,7 @@ function formatSize($bytes) {
             .then(res => {
                 container.innerHTML = '';
                 if(res.data.length === 0) {
-                    container.innerHTML = '<div style="text-align:center; width:100%; color:#888;">Folder Kosong</div>';
+                    container.innerHTML = '<div style="color:#666; text-align:center; margin-top:50px;">Folder Kosong</div>';
                     return;
                 }
 
@@ -359,24 +408,40 @@ function formatSize($bytes) {
                         <div class="item-name">${file.name}</div>
                     `;
                     
-                    // Left Click (Buka Folder / Preview)
-                    div.onclick = (e) => {
-                        e.stopPropagation();
-                        if (file.type === 'folder') {
-                            loadDir(file.path);
-                        } else {
+                    // --- EVENT LISTENER UNTUK HP (TOUCH) & PC (MOUSE) ---
+                    
+                    // 1. Desktop Right Click
+                    div.oncontextmenu = (e) => {
+                        e.preventDefault();
+                        showMenu(e.clientX, e.clientY, file);
+                    };
+
+                    // 2. Desktop Left Click / Mobile Tap
+                    div.onclick = () => {
+                        if (file.type === 'folder') loadDir(file.path);
+                        else {
                             selectedFile = file;
                             previewFile();
                         }
                     };
 
-                    // Right Click (Context Menu)
-                    div.oncontextmenu = (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        selectedFile = file;
-                        showMenu(e.pageX, e.pageY);
-                    };
+                    // 3. Mobile Long Press Logic
+                    div.addEventListener('touchstart', (e) => {
+                        // Reset timer jika user menyentuh
+                        longPressTimer = setTimeout(() => {
+                            // Jika tahan 800ms, anggap klik kanan
+                            const touch = e.touches[0];
+                            showMenu(touch.clientX, touch.clientY, file);
+                        }, 800); 
+                    }, {passive: true});
+
+                    div.addEventListener('touchend', () => {
+                        clearTimeout(longPressTimer); // Batal jika jari diangkat cepat
+                    });
+
+                    div.addEventListener('touchmove', () => {
+                        clearTimeout(longPressTimer); // Batal jika jari menggeser (scroll)
+                    });
 
                     container.appendChild(div);
                 });
@@ -391,56 +456,65 @@ function formatSize($bytes) {
             }
         }
 
-        // 2. CONTEXT MENU
-        function showMenu(x, y) {
+        // --- CONTEXT MENU LOGIC ---
+        function showMenu(x, y, file) {
+            selectedFile = file;
             const menu = document.getElementById('ctx-menu');
+            
+            // Logika agar menu tidak keluar layar (Penting buat HP)
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            
+            if (x + 200 > w) x = w - 210; // Geser ke kiri jika mepet kanan
+            if (y + 300 > h) y = h - 310; // Geser ke atas jika mepet bawah
+            
             menu.style.display = 'block';
             menu.style.left = x + 'px';
             menu.style.top = y + 'px';
+            
+            // Getar dikit di HP kalau support
+            if (navigator.vibrate) navigator.vibrate(50); 
         }
 
-        function showGlobalMenu(e) {
-            // Menu jika klik kanan di area kosong (Paste option)
-            e.preventDefault();
-            const menu = document.getElementById('ctx-menu');
-            // Hide file specific options here if needed, but for simplicity we keep basic
+        function hideMenu() {
+            document.getElementById('ctx-menu').style.display = 'none';
         }
 
-        // 3. ACTIONS
+        // --- ACTIONS ---
         function previewFile() {
+            hideMenu();
             if (!selectedFile) return;
             const type = selectedFile.type;
-            const url = selectedFile.path; // Path relative untuk browser
+            const url = selectedFile.path;
             const modal = document.getElementById('previewModal');
             const body = document.getElementById('modalBody');
-            const title = document.getElementById('modalTitle');
-
-            title.innerText = selectedFile.name;
+            document.getElementById('modalTitle').innerText = selectedFile.name;
+            
             body.innerHTML = '';
 
             if (type === 'video') {
-                body.innerHTML = `<video controls autoplay style="width:100%"><source src="${url}" type="video/mp4">Browser not supported</video>`;
+                body.innerHTML = `<video controls autoplay style="width:100%; max-height:70vh;"><source src="${url}" type="video/mp4">Not Supported</video>`;
                 modal.style.display = 'flex';
             } else if (type === 'image') {
-                body.innerHTML = `<img src="${url}" />`;
+                body.innerHTML = `<img src="${url}" style="max-width:100%; max-height:70vh; object-fit:contain;" />`;
                 modal.style.display = 'flex';
             } else if (type === 'pdf') {
-                body.innerHTML = `<iframe src="${url}" width="100%" height="600px" style="border:none;"></iframe>`;
+                body.innerHTML = `<iframe src="${url}" style="width:100%; height:70vh; border:none;"></iframe>`;
                 modal.style.display = 'flex';
-            } else if (type === 'office') {
-                alert("File Office tidak bisa dipreview di Local Server tanpa Internet. File akan didownload.");
-                downloadFile();
             } else {
-                alert("Tipe file ini tidak bisa dipreview. Silakan download.");
+                if(confirm("File ini tidak bisa di-preview. Download saja?")) {
+                    downloadFile();
+                }
             }
         }
 
         function closeModal() {
             document.getElementById('previewModal').style.display = 'none';
-            document.getElementById('modalBody').innerHTML = ''; // Stop video
+            document.getElementById('modalBody').innerHTML = '';
         }
 
         function downloadFile() {
+            hideMenu();
             const a = document.createElement('a');
             a.href = selectedFile.path;
             a.download = selectedFile.name;
@@ -450,12 +524,13 @@ function formatSize($bytes) {
         }
 
         function renameFile() {
-            const newName = prompt("Rename file menjadi:", selectedFile.name);
+            hideMenu();
+            const newName = prompt("Nama baru:", selectedFile.name);
             if (newName && newName !== selectedFile.name) {
                 const formData = new FormData();
                 formData.append('action', 'rename');
-                formData.append('path', selectedFile.path); // path lama
-                formData.append('name', newName); // nama baru
+                formData.append('path', selectedFile.path);
+                formData.append('name', newName);
 
                 fetch('', { method: 'POST', body: formData })
                 .then(r => r.json())
@@ -467,34 +542,32 @@ function formatSize($bytes) {
         }
 
         function copyFile() {
+            hideMenu();
             clipboard = selectedFile.path;
-            alert("File disalin ke clipboard!");
+            alert("Disalin! Pindah ke folder lain dan pilih Paste.");
         }
 
         function pasteFile() {
-            if (!clipboard) {
-                alert("Tidak ada file di clipboard!");
-                return;
-            }
-            if (confirm("Paste file di sini?")) {
-                const formData = new FormData();
-                formData.append('action', 'paste');
-                formData.append('source', clipboard);
-                formData.append('destination', currentPath);
+            hideMenu();
+            if (!clipboard) return alert("Clipboard kosong!");
+            
+            const formData = new FormData();
+            formData.append('action', 'paste');
+            formData.append('source', clipboard);
+            formData.append('destination', currentPath);
 
-                fetch('', { method: 'POST', body: formData })
-                .then(r => r.json())
-                .then(res => {
-                    if(res.status === 'success') loadDir(currentPath);
-                    else alert("Gagal paste: " + res.message);
-                });
-            }
+            fetch('', { method: 'POST', body: formData })
+            .then(r => r.json())
+            .then(res => {
+                if(res.status === 'success') loadDir(currentPath);
+                else alert("Gagal paste.");
+            });
         }
-
+        
         function showProps() {
-            alert(`Nama: ${selectedFile.name}\nUkuran: ${selectedFile.size}\nTanggal: ${selectedFile.date}`);
+            hideMenu();
+            alert(`File: ${selectedFile.name}\nSize: ${selectedFile.size}\nDate: ${selectedFile.date}`);
         }
-
     </script>
 </body>
 </html>
